@@ -4,16 +4,16 @@
 """
 extract_data.py
 
-Script para extraer características de partidas de ajedrez desde archivos CSV o PGN,
-generando un dataset con representación one‑hot del tablero en el ply 20.
+Script to extract features from chess games from CSV or PGN files,
+generating a dataset with one-hot representation of the board at ply 20.
 
-Uso:
-    python extract_data.py --input <ruta> --output <ruta> --source <nombre_fuente>
+Usage:
+    python extract_data.py --input <path> --output <path> --source <source_name>
 
-Requisitos:
+Requirements:
     - pandas
     - python-chess
-    - numpy (opcional, usado internamente por pandas)
+    - numpy (optional, used internally by pandas)
 """
 
 import os
@@ -24,16 +24,16 @@ import chess
 import chess.pgn
 
 # ----------------------------------------------------------------------
-# Funciones auxiliares
+# Auxiliary functions
 # ----------------------------------------------------------------------
 
 def parse_winner_csv(winner_str):
     """
-    Convierte el valor de la columna 'winner' de un CSV a entero:
+    Converts the value of the 'winner' column from a CSV to an integer:
         'white' -> 1
         'draw'  -> 0
         'black' -> 2
-    Cualquier otro valor devuelve None (se descartará la fila).
+    Any other value returns None (the row will be discarded).
     """
     w = str(winner_str).strip().lower()
     if w == 'white':
@@ -48,11 +48,11 @@ def parse_winner_csv(winner_str):
 
 def parse_result_pgn(result_str):
     """
-    Convierte el resultado de una partida PGN a entero:
+    Converts the result of a PGN game to an integer:
         "1-0"      -> 1
         "1/2-1/2"  -> 0
         "0-1"      -> 2
-    Cualquier otro valor devuelve None.
+    Any other value returns None.
     """
     r = result_str.strip()
     if r == "1-0":
@@ -67,36 +67,36 @@ def parse_result_pgn(result_str):
 
 def extract_one_hot(board):
     """
-    Genera un diccionario con 768 claves de la forma '{casilla}_{color}_{pieza}'
-    donde cada valor es 1 si la pieza está presente en esa casilla, 0 en caso contrario.
+    Generates a dictionary with 768 keys of the form '{square}_{color}_{piece}'
+    where each value is 1 if the piece is present on that square, 0 otherwise.
 
-    El orden de las piezas es: Pawn, Knight, Bishop, Rook, Queen, King
-    (tanto para blancas como para negras).
+    The order of pieces is: Pawn, Knight, Bishop, Rook, Queen, King
+    (both for whites and blacks).
     """
-    # Lista de piezas en orden estándar (sin color)
+    # List of pieces in standard order (without color)
     piece_types = [chess.PAWN, chess.KNIGHT, chess.BISHOP,
                    chess.ROOK, chess.QUEEN, chess.KING]
-    # Nombres cortos para cada tipo
+    # Short names for each type
     piece_names = ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King']
 
-    # Inicializar diccionario con ceros
+    # Initialize dictionary with zeros
     features = {}
     for square in chess.SQUARES:
-        sq_name = chess.SQUARE_NAMES[square]  # ej: 'e4'
+        sq_name = chess.SQUARE_NAMES[square]  # e.g.: 'e4'
         for color in (chess.WHITE, chess.BLACK):
             color_name = 'W' if color == chess.WHITE else 'B'
             for ptype, pname in zip(piece_types, piece_names):
                 key = f"{sq_name}_{color_name}_{pname}"
                 features[key] = 0
 
-    # Poblar con las piezas actuales del tablero
+    # Populate with the pieces from the board
     for square in chess.SQUARES:
         piece = board.piece_at(square)
         if piece is not None:
             sq_name = chess.SQUARE_NAMES[square]
             color_name = 'W' if piece.color == chess.WHITE else 'B'
             ptype = piece.piece_type
-            # Índice del tipo de pieza (0‑5)
+            # Index of the piece type (0-5)
             idx = piece_types.index(ptype)
             pname = piece_names[idx]
             key = f"{sq_name}_{color_name}_{pname}"
@@ -107,9 +107,9 @@ def extract_one_hot(board):
 
 def write_output_chunk(df_chunk, output_path, first_chunk):
     """
-    Guarda un DataFrame en el archivo de salida.
-    Si first_chunk es True, escribe la cabecera (mode='w').
-    En caso contrario, añade sin cabecera (mode='a', header=False).
+    Saves a DataFrame to the output file.
+    If first_chunk is True, writes the header (mode='w').
+    Otherwise, appends without header (mode='a', header=False).
     """
     if first_chunk:
         df_chunk.to_csv(output_path, mode='w', index=False)
@@ -118,54 +118,54 @@ def write_output_chunk(df_chunk, output_path, first_chunk):
 
 
 # ----------------------------------------------------------------------
-# Procesamiento de archivos CSV (Kaggle)
+# Processing CSV files (Kaggle)
 # ----------------------------------------------------------------------
 
 def process_csv(input_path, output_path, source_name):
     """
-    Lee el archivo CSV por chunks de 1000 filas, parsea las jugadas,
-    aplica filtros de calidad y extrae las features en el ply 20.
-    Guarda los resultados de forma incremental.
+    Reads the CSV file in chunks of 1000 rows, parses the moves,
+    applies quality filters and extracts features at ply 20.
+    Saves results incrementally.
     """
     first_chunk = True
 
-    # Leer el CSV en modo streaming (chunksize=1000)
+    # Read the CSV in streaming mode (chunksize=1000)
     for chunk_idx, chunk in enumerate(pd.read_csv(input_path, chunksize=1000)):
-        rows = []  # lista de diccionarios para construir el DataFrame final
+        rows = []  # list of dictionaries to build the final DataFrame
 
         for _, row in chunk.iterrows():
-            # --- Mapeo de columnas del CSV original ---
+            # --- Mapping columns from the original CSV file ---
             try:
                 elo_white = int(row['white_rating'])
                 elo_black = int(row['black_rating'])
             except (ValueError, TypeError, KeyError):
-                # Si no se puede convertir a entero, se descarta la fila
+                # If it can't be converted to integer, discard the row
                 continue
 
-            # Filtro de calidad: Elos deben ser enteros válidos (ya comprobado)
-            # (no se necesita más comprobación)
+            # Quality filter: Elo values must be valid integers (already checked)
+            # (no need for further checking)
 
-            # Obtener la columna 'winner' y convertirla
+            # Get the 'winner' column and convert it
             winner_val = parse_winner_csv(row.get('winner', ''))
             if winner_val is None:
                 continue
 
-            # Obtener nombre de apertura y ECO (pueden faltar)
+            # Get opening name and ECO code (they may be missing)
             opening_name = row.get('opening_name', '')
             eco_code = row.get('opening_eco', '')
 
-            # --- Parseo de jugadas ---
+            # --- Parsing moves ---
             moves_str = str(row.get('moves', ''))
             if not moves_str:
                 continue
 
-            # Dividir por espacios
+            # Split by spaces
             move_list = moves_str.split()
-            # Necesitamos al menos 20 plies (10 jugadas completas)
+            # We need at least 20 plies (10 full moves)
             if len(move_list) < 20:
                 continue
 
-            # Crear un tablero y aplicar las primeras 20 jugadas
+            # Create a board and apply the first 20 moves
             board = chess.Board()
             valid = True
             for i in range(20):
@@ -178,10 +178,10 @@ def process_csv(input_path, output_path, source_name):
             if not valid:
                 continue
 
-            # --- Extracción de features one‑hot ---
+            # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
 
-            # --- Construir fila de salida ---
+            # --- Build output row ---
             out_row = {
                 'Elo_White': elo_white,
                 'Elo_Black': elo_black,
@@ -190,32 +190,32 @@ def process_csv(input_path, output_path, source_name):
                 'Result': winner_val,
                 'Source': source_name,
             }
-            # Añadir las 768 columnas one‑hot
+            # Add the 768 one-hot columns
             out_row.update(one_hot)
 
             rows.append(out_row)
 
-        # Si hay filas procesadas en este chunk, guardarlas
+        # If any rows processed in this chunk, save them
         if rows:
             df_chunk = pd.DataFrame(rows)
             write_output_chunk(df_chunk, output_path, first_chunk)
             first_chunk = False
 
-    print(f"[CSV] Procesamiento completado. Archivo de salida: {output_path}")
+    print(f"[CSV] Processing completed. Output file: {output_path}")
 
 
 # ----------------------------------------------------------------------
-# Procesamiento de archivos PGN (Pro)
+# Processing PGN files (Pro)
 # ----------------------------------------------------------------------
 
 def process_pgn(input_path, output_path, source_name):
     """
-    Lee el archivo PGN partida a partida usando chess.pgn.read_game(),
-    aplica los mismos filtros y extrae las features en el ply 20.
-    Guarda los resultados de forma incremental.
+    Reads the PGN game by game using chess.pgn.read_game(),
+    applies the same filters and extracts features at ply 20.
+    Saves results incrementally.
     """
     first_chunk = True
-    rows = []  # acumulamos filas para escribir en lotes (cada 1000)
+    rows = []  # accumulate rows to write in batches (every 1000)
 
     with open(input_path, 'r', encoding='utf-8') as pgn_file:
         while True:
@@ -223,36 +223,36 @@ def process_pgn(input_path, output_path, source_name):
             if game is None:
                 break
 
-            # --- Mapeo de headers del PGN ---
+            # --- Mapping headers from the PGN ---
             try:
                 elo_white = int(game.headers.get('WhiteElo', ''))
                 elo_black = int(game.headers.get('BlackElo', ''))
             except (ValueError, TypeError):
-                # Si no se puede convertir a entero, se descarta la partida
+                # If it can't be converted to integer, discard the game
                 continue
 
-            # Filtro de calidad: Elos deben ser enteros válidos (ya comprobado)
+            # Quality filter: Elo values must be valid integers (already checked)
 
-            # Obtener resultado del PGN
+            # Get result from PGN
             result_str = game.headers.get('Result', '')
             result_val = parse_result_pgn(result_str)
             if result_val is None:
                 continue
 
-            # Obtener nombre de apertura y ECO
+            # Get opening name and ECO code
             opening_name = game.headers.get('Opening', '')
             eco_code = game.headers.get('ECO', '')
 
-            # --- Obtener la lista de jugadas ---
-            # Extraemos la secuencia de movimientos desde la partida principal
+            # --- Obtain the move list ---
+            # Extract the sequence of moves from the mainline game
             board = game.board()
             move_list = list(game.mainline_moves())
 
-            # Necesitamos al menos 20 plies (10 jugadas completas)
+            # We need at least 20 plies (10 full moves)
             if len(move_list) < 20:
                 continue
 
-            # Aplicar las primeras 20 jugadas
+            # Apply the first 20 moves
             board = chess.Board()
             valid = True
             for i in range(20):
@@ -265,10 +265,10 @@ def process_pgn(input_path, output_path, source_name):
             if not valid:
                 continue
 
-            # --- Extracción de features one‑hot ---
+            # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
 
-            # --- Construir fila de salida ---
+            # --- Build output row ---
             out_row = {
                 'Elo_White': elo_white,
                 'Elo_Black': elo_black,
@@ -281,54 +281,54 @@ def process_pgn(input_path, output_path, source_name):
 
             rows.append(out_row)
 
-            # Escribir cada 1000 filas para no acumular demasiada memoria
+            # Write every 1000 rows to avoid accumulating too much memory
             if len(rows) >= 1000:
                 df_chunk = pd.DataFrame(rows)
                 write_output_chunk(df_chunk, output_path, first_chunk)
                 first_chunk = False
                 rows = []
 
-    # Escribir las filas restantes
+    # Write the remaining rows
     if rows:
         df_chunk = pd.DataFrame(rows)
         write_output_chunk(df_chunk, output_path, first_chunk)
 
-    print(f"[PGN] Procesamiento completado. Archivo de salida: {output_path}")
+    print(f"[PGN] Processing completed. Output file: {output_path}")
 
 
 # ----------------------------------------------------------------------
-# Punto de entrada principal
+# Main entry point
 # ----------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extrae características de partidas de ajedrez (CSV o PGN) "
-                    "y genera un dataset con representación one‑hot en el ply 20."
+        description="Extracts features from chess games (CSV or PGN) "
+                    "and generates a dataset with one-hot representation at ply 20."
     )
     parser.add_argument('--input', required=True,
-                        help='Ruta al archivo de entrada (.csv o .pgn)')
+                        help='Path to the input file (.csv or .pgn)')
     parser.add_argument('--output', required=True,
-                        help='Ruta al archivo de salida (.csv)')
+                        help='Path to the output file (.csv)')
     parser.add_argument('--source', required=True,
-                        help='Nombre de la fuente de datos (ej: kaggle, pros)')
+                        help='Name of the data source (e.g: kaggle, pros)')
     args = parser.parse_args()
 
     input_path = args.input
     output_path = args.output
     source_name = args.source
 
-    # Detectar formato por extensión
+    # Detect format by extension
     _, ext = os.path.splitext(input_path)
     ext = ext.lower()
 
     if ext == '.csv':
-        print(f"Detectado formato CSV: {input_path}")
+        print(f"Detected CSV format: {input_path}")
         process_csv(input_path, output_path, source_name)
     elif ext == '.pgn':
-        print(f"Detectado formato PGN: {input_path}")
+        print(f"Detected PGN format: {input_path}")
         process_pgn(input_path, output_path, source_name)
     else:
-        print(f"Error: extensión '{ext}' no soportada. Use .csv o .pgn.",
+        print(f"Error: unsupported extension '{ext}'. Use .csv or .pgn.",
               file=sys.stderr)
         sys.exit(1)
 
