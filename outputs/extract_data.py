@@ -253,7 +253,6 @@ def process_pgn(input_path, output_path, source_name):
                 continue
 
             # Apply the first 20 moves
-            board = chess.Board()
             valid = True
             for i in range(20):
                 try:
