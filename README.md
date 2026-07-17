@@ -8,7 +8,7 @@
 > **How much information about the final outcome of a chess game is already contained in the opening?**
 
 <p align="center">
-    <img src="assets/images/chess_pipeline.png" alt="Chess Opening Predictor Pipeline" width="100%">
+    <img src="assets/images/chess pipeline.png" alt="Chess Opening Predictor Pipeline" width="100%">
 </p>
 
 ## 📖 Project Overview
