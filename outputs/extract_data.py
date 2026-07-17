@@ -185,6 +185,7 @@ def process_csv(input_path, output_path, source_name):
             out_row = {
                 'Elo_White': elo_white,
                 'Elo_Black': elo_black,
+                'Elo_Difference': elo_white - elo_black,
                 'Opening_Name': opening_name,
                 'ECO_Code': eco_code,
                 'Result': winner_val,
@@ -271,6 +272,7 @@ def process_pgn(input_path, output_path, source_name):
             out_row = {
                 'Elo_White': elo_white,
                 'Elo_Black': elo_black,
+                'Elo_Difference': elo_white - elo_black,
                 'Opening_Name': opening_name,
                 'ECO_Code': eco_code,
                 'Result': result_val,
