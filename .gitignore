@@ -1,1 +1,4 @@
 .aider*
+
+data/raw/pro_players/*.pgn
+data/processed/pro_players/*.csv

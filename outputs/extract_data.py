@@ -121,13 +121,15 @@ def write_output_chunk(df_chunk, output_path, first_chunk):
 # Processing CSV files (Kaggle)
 # ----------------------------------------------------------------------
 
-def process_csv(input_path, output_path, source_name):
+def process_csv(input_path, output_path, source_name, max_games=None):
     """
     Reads the CSV file in chunks of 1000 rows, parses the moves,
     applies quality filters and extracts features at ply 20.
     Saves results incrementally.
     """
     first_chunk = True
+    processed = 0
+    skipped = 0
 
     # Read the CSV in streaming mode (chunksize=1000)
     for chunk_idx, chunk in enumerate(pd.read_csv(input_path, chunksize=1000)):
@@ -140,6 +142,7 @@ def process_csv(input_path, output_path, source_name):
                 elo_black = int(row['black_rating'])
             except (ValueError, TypeError, KeyError):
                 # If it can't be converted to integer, discard the row
+                skipped += 1
                 continue
 
             # Quality filter: Elo values must be valid integers (already checked)
@@ -148,6 +151,7 @@ def process_csv(input_path, output_path, source_name):
             # Get the 'winner' column and convert it
             winner_val = parse_winner_csv(row.get('winner', ''))
             if winner_val is None:
+                skipped += 1
                 continue
 
             # Get opening name and ECO code (they may be missing)
@@ -157,12 +161,14 @@ def process_csv(input_path, output_path, source_name):
             # --- Parsing moves ---
             moves_str = str(row.get('moves', ''))
             if not moves_str:
+                skipped += 1
                 continue
 
             # Split by spaces
             move_list = moves_str.split()
             # We need at least 20 plies (10 full moves)
             if len(move_list) < 20:
+                skipped += 1
                 continue
 
             # Create a board and apply the first 20 moves
@@ -176,6 +182,7 @@ def process_csv(input_path, output_path, source_name):
                     valid = False
                     break
             if not valid:
+                skipped += 1
                 continue
 
             # --- Extraction of one-hot features ---
@@ -195,6 +202,11 @@ def process_csv(input_path, output_path, source_name):
             out_row.update(one_hot)
 
             rows.append(out_row)
+            processed += 1
+
+            # Check if we have reached the limit
+            if max_games is not None and processed >= max_games:
+                break
 
         # If any rows processed in this chunk, save them
         if rows:
@@ -202,14 +214,20 @@ def process_csv(input_path, output_path, source_name):
             write_output_chunk(df_chunk, output_path, first_chunk)
             first_chunk = False
 
+        # Stop reading further chunks if limit reached
+        if max_games is not None and processed >= max_games:
+            break
+
     print(f"[CSV] Processing completed. Output file: {output_path}")
+    print(f"Successfully processed: {processed} games")
+    print(f"Skipped: {skipped} games")
 
 
 # ----------------------------------------------------------------------
 # Processing PGN files (Pro)
 # ----------------------------------------------------------------------
 
-def process_pgn(input_path, output_path, source_name):
+def process_pgn(input_path, output_path, source_name, max_games=None):
     """
     Reads the PGN game by game using chess.pgn.read_game(),
     applies the same filters and extracts features at ply 20.
@@ -217,6 +235,8 @@ def process_pgn(input_path, output_path, source_name):
     """
     first_chunk = True
     rows = []  # accumulate rows to write in batches (every 1000)
+    processed = 0
+    skipped = 0
 
     with open(input_path, 'r', encoding='utf-8') as pgn_file:
         while True:
@@ -230,6 +250,7 @@ def process_pgn(input_path, output_path, source_name):
                 elo_black = int(game.headers.get('BlackElo', ''))
             except (ValueError, TypeError):
                 # If it can't be converted to integer, discard the game
+                skipped += 1
                 continue
 
             # Quality filter: Elo values must be valid integers (already checked)
@@ -238,6 +259,7 @@ def process_pgn(input_path, output_path, source_name):
             result_str = game.headers.get('Result', '')
             result_val = parse_result_pgn(result_str)
             if result_val is None:
+                skipped += 1
                 continue
 
             # Get opening name and ECO code
@@ -251,6 +273,7 @@ def process_pgn(input_path, output_path, source_name):
 
             # We need at least 20 plies (10 full moves)
             if len(move_list) < 20:
+                skipped += 1
                 continue
 
             # Apply the first 20 moves
@@ -263,6 +286,7 @@ def process_pgn(input_path, output_path, source_name):
                     valid = False
                     break
             if not valid:
+                skipped += 1
                 continue
 
             # --- Extraction of one-hot features ---
@@ -281,6 +305,7 @@ def process_pgn(input_path, output_path, source_name):
             out_row.update(one_hot)
 
             rows.append(out_row)
+            processed += 1
 
             # Write every 1000 rows to avoid accumulating too much memory
             if len(rows) >= 1000:
@@ -289,12 +314,18 @@ def process_pgn(input_path, output_path, source_name):
                 first_chunk = False
                 rows = []
 
+            # Check if we have reached the limit
+            if max_games is not None and processed >= max_games:
+                break
+
     # Write the remaining rows
     if rows:
         df_chunk = pd.DataFrame(rows)
         write_output_chunk(df_chunk, output_path, first_chunk)
 
     print(f"[PGN] Processing completed. Output file: {output_path}")
+    print(f"Successfully processed: {processed} games")
+    print(f"Skipped: {skipped} games")
 
 
 # ----------------------------------------------------------------------
@@ -312,11 +343,14 @@ def main():
                         help='Path to the output file (.csv)')
     parser.add_argument('--source', required=True,
                         help='Name of the data source (e.g: kaggle, pros)')
+    parser.add_argument('--max-games', type=int, default=None,
+                        help='Maximum number of successfully processed games (optional)')
     args = parser.parse_args()
 
     input_path = args.input
     output_path = args.output
     source_name = args.source
+    max_games = args.max_games
 
     # Detect format by extension
     _, ext = os.path.splitext(input_path)
@@ -324,10 +358,10 @@ def main():
 
     if ext == '.csv':
         print(f"Detected CSV format: {input_path}")
-        process_csv(input_path, output_path, source_name)
+        process_csv(input_path, output_path, source_name, max_games)
     elif ext == '.pgn':
         print(f"Detected PGN format: {input_path}")
-        process_pgn(input_path, output_path, source_name)
+        process_pgn(input_path, output_path, source_name, max_games)
     else:
         print(f"Error: unsupported extension '{ext}'. Use .csv or .pgn.",
               file=sys.stderr)
