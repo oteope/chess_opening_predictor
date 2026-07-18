@@ -10,3 +10,4 @@ venv/
 # Generated datasets
 data/raw/pro_players/
 data/processed/pro_players/
+data/processed/final_dataset.csv
