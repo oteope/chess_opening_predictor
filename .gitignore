@@ -1,4 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Aider
 .aider*
 
-data/raw/pro_players/*.pgn
-data/processed/pro_players/*.csv
+# Generated datasets
+data/raw/pro_players/
+data/processed/pro_players/
