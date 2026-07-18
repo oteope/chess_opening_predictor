@@ -109,6 +109,7 @@ To avoid overrepresenting any individual player, the preprocessing pipeline limi
 This keeps the professional subset balanced while still exposing the models to high-quality chess.
 
 These players were selected to expose the models to different playing styles while covering both elite competitive chess and high-level educational content.
+
 ---
 
 ### 👤 Personal Games
@@ -178,6 +179,7 @@ This guarantees that every source follows exactly the same feature representatio
 
 ## 📁 Dataset Organization
 
+```text
 data/
 ├── raw/
 │   ├── pro_players/
@@ -189,3 +191,4 @@ data/
 │   ├── kaggle.csv
 │   ├── friend_games.csv
 │   └── final_dataset.csv
+```
