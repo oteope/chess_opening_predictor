@@ -23,6 +23,12 @@ import pandas as pd
 import chess
 import chess.pgn
 
+try:
+    import eco
+    _ECO_AVAILABLE = True
+except ImportError:
+    _ECO_AVAILABLE = False
+
 # ----------------------------------------------------------------------
 # Auxiliary functions
 # ----------------------------------------------------------------------
@@ -105,6 +111,27 @@ def extract_one_hot(board):
     return features
 
 
+def _infer_opening_and_eco(board: chess.Board,
+                           eco_db: 'eco.Eco') -> tuple:
+    """
+    Returns (opening_name, eco_code) using the ECO database.
+    If the database is not available or the position is not recognized,
+    falls back to ("Unknown", "Unknown").
+    """
+    if not _ECO_AVAILABLE or eco_db is None:
+        return "Unknown", "Unknown"
+    try:
+        eco_code, opening_name = eco_db.eco_of_game(board)
+        # ensure strings
+        if opening_name is None:
+            opening_name = "Unknown"
+        if eco_code is None:
+            eco_code = "Unknown"
+        return opening_name, eco_code
+    except Exception:
+        return "Unknown", "Unknown"
+
+
 def write_output_chunk(df_chunk, output_path, first_chunk):
     """
     Saves a DataFrame to the output file.
@@ -185,6 +212,14 @@ def process_csv(input_path, output_path, source_name, max_games=None):
                 skipped += 1
                 continue
 
+            # --- Infer opening/ECO if missing in PGN headers ---
+            if not opening_name or not eco_code:
+                inferred_opening, inferred_eco = _infer_opening_and_eco(board, eco_db)
+                if not opening_name:
+                    opening_name = inferred_opening
+                if not eco_code:
+                    eco_code = inferred_eco
+
             # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
 
@@ -237,6 +272,14 @@ def process_pgn(input_path, output_path, source_name, max_games=None):
     rows = []  # accumulate rows to write in batches (every 1000)
     processed = 0
     skipped = 0
+
+    # Initialize ECO database if available (for opening inference)
+    eco_db = None
+    if _ECO_AVAILABLE:
+        try:
+            eco_db = eco.Eco()
+        except Exception:
+            eco_db = None
 
     with open(input_path, 'r', encoding='utf-8') as pgn_file:
         while True:
