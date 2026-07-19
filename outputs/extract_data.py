@@ -20,6 +20,7 @@ import os
 import sys
 import argparse
 import csv
+from io import StringIO
 import pandas as pd
 import chess
 import chess.pgn
@@ -114,15 +115,29 @@ def extract_one_hot(board):
 
 
 class LichessOpeningDB:
-    """Loads a Lichess Openings database (dist) and provides O(1) lookup by EPD."""
+    """Loads a Lichess Openings database (dist) using the real TSV format
+       (eco, name, pgn) and provides the longest prefix match with UCI moves."""
 
     def __init__(self, dist_dir: str) -> None:
-        self._epd_to_opening: dict[str, Tuple[str, str]] = {}
-        # each value: (opening_name, eco_code)
+        self._openings: List[Tuple[str, str, List[str]]] = []
+        # each element: (eco_code, opening_name, [uci1, uci2, ...])
         self._load(dist_dir)
 
+    @staticmethod
+    def _pgn_to_uci_list(pgn_str: str) -> Optional[List[str]]:
+        """Parse the PGN column and return a list of UCI move strings."""
+        try:
+            from io import StringIO
+            pgn_io = StringIO(pgn_str)
+            game = chess.pgn.read_game(pgn_io)
+            if game is None:
+                return None
+            return [move.uci() for move in game.mainline_moves()]
+        except Exception:
+            return None
+
     def _load(self, dist_dir: str) -> None:
-        """Parse all .tsv files in the given directory and fill the lookup."""
+        """Parse all .tsv files in the given directory and fill the opening list."""
         if not os.path.isdir(dist_dir):
             raise FileNotFoundError(f"Lichess Openings directory not found: {dist_dir}")
         tsv_files = [f for f in os.listdir(dist_dir) if f.endswith('.tsv')]
@@ -133,36 +148,59 @@ class LichessOpeningDB:
             fpath = os.path.join(dist_dir, fname)
             with open(fpath, 'r', encoding='utf-8') as f:
                 reader = csv.reader(f, delimiter='\t')
-                # Read header (skip)
+                # Read header line (eco / name / pgn)
                 try:
                     header = next(reader)
-                    if not header:
-                        continue
                 except StopIteration:
                     continue
-                # Header columns: eco, name, pgn, uci, epd (order guaranteed)
+                # No validation of header contents; actual data starts from second row
                 for row in reader:
-                    if len(row) < 5:
+                    if len(row) < 3:
                         continue
                     eco_code = row[0].strip()
                     opening_name = row[1].strip()
-                    epd = row[4].strip()
-                    if not eco_code or not opening_name or not epd:
+                    pgn = row[2].strip()
+                    if not eco_code or not opening_name or not pgn:
                         continue
-                    # Store; if epd already exists, keep the first occurrence
-                    if epd not in self._epd_to_opening:
-                        self._epd_to_opening[epd] = (opening_name, eco_code)
+                    uci_seq = self._pgn_to_uci_list(pgn)
+                    if uci_seq is None:
+                        continue
+                    # Append; later we will perform longest prefix match
+                    self._openings.append((eco_code, opening_name, uci_seq))
 
-    def lookup(self, epd: str) -> Tuple[str, str]:
+    def lookup(self, board: chess.Board) -> Tuple[str, str]:
         """
-        Return the (opening_name, eco_code) for the given EPD.
+        Return the (opening_name, eco_code) with the longest prefix match
+        between the board's move history and the opening database.
 
-        If the epd is not found, returns ("Unknown", "Unknown").
+        Uses UCI representation for comparison.
+        If no matching opening is found, returns ("Unknown", "Unknown").
         """
-        entry = self._epd_to_opening.get(epd)
-        if entry is None:
+        # UCI sequence of the moves played so far
+        game_uci = [move.uci() for move in board.move_stack]
+
+        best_len = -1
+        best_eco = "Unknown"
+        best_name = "Unknown"
+
+        for eco_code, opening_name, opening_uci in self._openings:
+            # Maximum possible prefix length
+            limit = min(len(game_uci), len(opening_uci))
+            prefix_len = 0
+            for i in range(limit):
+                if game_uci[i] == opening_uci[i]:
+                    prefix_len += 1
+                else:
+                    break
+            if prefix_len > best_len:
+                best_len = prefix_len
+                best_eco = eco_code
+                best_name = opening_name
+
+        if best_len < 1:
+            # No prefix matched at least one move
             return ("Unknown", "Unknown")
-        return entry
+        return (best_name, best_eco)
 
 
 def write_output_chunk(df_chunk, output_path, first_chunk):
@@ -241,9 +279,8 @@ def process_csv(input_path, output_path, source_name, max_games=None):
                 skipped += 1
                 continue
 
-            # --- Infer opening/ECO from the Lichess database (EPD lookup) ---
-            epd_board = board.epd()
-            opening_name, eco_code = _OPENING_DETECTOR.lookup(epd_board)
+            # --- Infer opening/ECO from the Lichess database (longest prefix match) ---
+            opening_name, eco_code = _OPENING_DETECTOR.lookup(board)
 
             # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
@@ -346,9 +383,8 @@ def process_pgn(input_path, output_path, source_name, max_games=None):
                 skipped += 1
                 continue
 
-            # --- Opening detection from the board position (EPD lookup) ---
-            epd_board = board.epd()
-            opening_name, eco_code = _OPENING_DETECTOR.lookup(epd_board)
+            # --- Opening detection from the board position (longest prefix match) ---
+            opening_name, eco_code = _OPENING_DETECTOR.lookup(board)
 
             # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
