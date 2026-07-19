@@ -148,7 +148,7 @@ This process is fully automated and reproducible.
 
 ## 2. Feature Extraction
 
-Raw PGN files cannot be used directly by Machine Learning models.
+Raw chess games (CSV or PGN) files cannot be used directly by Machine Learning models.
 
 The extraction pipeline parses every game, validates its quality and converts the board position after move 10 into a numerical representation.
 
@@ -179,16 +179,21 @@ This guarantees that every source follows exactly the same feature representatio
 
 ## 📁 Dataset Organization
 
-```text
 data/
 ├── raw/
-│   ├── pro_players/
-│   ├── kaggle.csv
-│   └── friend_games.csv
+│   ├── kaggle_dataset.csv
+│   ├── friend_games.pgn
+│   └── pro_players/
+│       ├── magnus_carlsen.pgn
+│       ├── ding_liren.pgn
+│       ├── gothamchess.pgn
 │
 ├── processed/
-│   ├── pro_players/
-│   ├── kaggle.csv
-│   ├── friend_games.csv
-│   └── final_dataset.csv
-```
+│   ├── processed_kaggle.csv
+│   ├── friend_games_processed.csv
+│   ├── final_dataset.csv
+│   └── pro_players/
+│       ├── magnus_carlsen_processed.csv
+│       ├── ding_liren_processed.csv
+│       ├── gothamchess_processed.csv
+│       └── pro_players_processed.csv
