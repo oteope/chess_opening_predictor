@@ -22,12 +22,13 @@ import argparse
 import pandas as pd
 import chess
 import chess.pgn
+from typing import List, Optional, Tuple
 
-try:
-    import eco
-    _ECO_AVAILABLE = True
-except ImportError:
-    _ECO_AVAILABLE = False
+# Default path for ECO database
+DEFAULT_ECO_DB = os.path.join(os.path.dirname(__file__), 'eco', 'eco.pgn')
+
+# Global variable for opening detector (initialized in main)
+_OPENING_DETECTOR = None
 
 # ----------------------------------------------------------------------
 # Auxiliary functions
@@ -111,28 +112,49 @@ def extract_one_hot(board):
     return features
 
 
-def _infer_opening_and_eco(game, eco_db):
-    """
-    Infer opening name and ECO from the full game.
-    """
-    if not _ECO_AVAILABLE or eco_db is None:
-        return "Unknown", "Unknown"
+class OpeningDetector:
+    """Loads an ECO database from a PGN file and matches opening sequences."""
 
-    try:
-        result = eco_db.eco_of_game(game)
+    def __init__(self, eco_db_path: str) -> None:
+        self.eco_entries: List[Tuple[str, str, List[str]]] = []
+        # each entry: (eco_code, opening_name, move_ucis)
+        self._load(eco_db_path)
 
-        if result is None:
-            return "Unknown", "Unknown"
+    def _load(self, path: str) -> None:
+        """Parse the ECO database file and store move sequences."""
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"ECO database file not found: {path}")
+        with open(path, 'r', encoding='utf-8') as f:
+            while True:
+                game = chess.pgn.read_game(f)
+                if game is None:
+                    break
+                eco_code = game.headers.get('ECO', '')
+                opening_name = game.headers.get('Opening', '')
+                if not eco_code or not opening_name:
+                    continue
+                moves_uci = []
+                for move in game.mainline_moves():
+                    moves_uci.append(move.uci())
+                self.eco_entries.append((eco_code, opening_name, moves_uci))
 
-        eco_code, opening_name = result
-
-        return (
-            opening_name or "Unknown",
-            eco_code or "Unknown"
-        )
-
-    except Exception:
-        return "Unknown", "Unknown"
+    def detect(self, game_moves: List[str]) -> Tuple[str, str]:
+        """Return the (opening_name, eco_code) for the longest matching prefix."""
+        best_length = 0
+        best_eco = ("Unknown", "Unknown")
+        for eco_code, opening_name, pattern in self.eco_entries:
+            # Compare prefix
+            max_len = min(len(game_moves), len(pattern))
+            match_len = 0
+            for i in range(max_len):
+                if game_moves[i] == pattern[i]:
+                    match_len += 1
+                else:
+                    break
+            if match_len > best_length:
+                best_length = match_len
+                best_eco = (opening_name, eco_code)
+        return best_eco
 
 
 def write_output_chunk(df_chunk, output_path, first_chunk):
@@ -222,13 +244,32 @@ def process_csv(input_path, output_path, source_name, max_games=None):
                 skipped += 1
                 continue
 
-            # --- Infer opening/ECO if missing in PGN headers ---
+            # --- Infer opening/ECO from game moves ---
             if not opening_name or not eco_code:
-                inferred_opening, inferred_eco = _infer_opening_and_eco(board, eco_db)
-                if not opening_name:
-                    opening_name = inferred_opening
-                if not eco_code:
-                    eco_code = inferred_eco
+                # Build UCI list of first 20 moves
+                uci_moves = []
+                tmp_board = chess.Board()
+                valid_uci = True
+                for token in move_list[:20]:
+                    try:
+                        m = tmp_board.parse_san(token)
+                        uci_moves.append(m.uci())
+                        tmp_board.push(m)
+                    except (chess.InvalidMoveError, chess.IllegalMoveError,
+                            chess.AmbiguousMoveError):
+                        valid_uci = False
+                        break
+                if valid_uci and uci_moves:
+                    inferred_opening, inferred_eco = _OPENING_DETECTOR.detect(uci_moves)
+                    if not opening_name:
+                        opening_name = inferred_opening
+                    if not eco_code:
+                        eco_code = inferred_eco
+                else:
+                    if not opening_name:
+                        opening_name = "Unknown"
+                    if not eco_code:
+                        eco_code = "Unknown"
 
             # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
@@ -339,7 +380,11 @@ def process_pgn(input_path, output_path, source_name, max_games=None):
                 continue
 
             # --- Opening detection from the board position ---
-            opening_name, eco_code = _infer_opening_and_eco(game, eco_db)
+            # Convert game moves to UCI
+            uci_moves = [m.uci() for m in move_list[:20]]
+            inferred_opening, inferred_eco = _OPENING_DETECTOR.detect(uci_moves)
+            opening_name = inferred_opening
+            eco_code = inferred_eco
 
             # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
@@ -397,12 +442,19 @@ def main():
                         help='Name of the data source (e.g: kaggle, pros)')
     parser.add_argument('--max-games', type=int, default=None,
                         help='Maximum number of successfully processed games (optional)')
+    parser.add_argument('--eco-db', type=str, default=None,
+                        help='Path to the ECO database PGN file (default: {}'.format(DEFAULT_ECO_DB))
     args = parser.parse_args()
 
     input_path = args.input
     output_path = args.output
     source_name = args.source
     max_games = args.max_games
+
+    # Determine ECO database path and initialise the opening detector
+    eco_db_path = args.eco_db if args.eco_db else DEFAULT_ECO_DB
+    global _OPENING_DETECTOR
+    _OPENING_DETECTOR = OpeningDetector(eco_db_path)
 
     # Detect format by extension
     _, ext = os.path.splitext(input_path)
