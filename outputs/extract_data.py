@@ -155,6 +155,13 @@ def process_csv(input_path, output_path, source_name, max_games=None):
     Saves results incrementally.
     """
     first_chunk = True
+    # Initialize ECO database if available (for opening inference)
+    eco_db = None
+    if _ECO_AVAILABLE:
+        try:
+            eco_db = eco.Eco()
+        except Exception:
+            eco_db = None
     processed = 0
     skipped = 0
 
