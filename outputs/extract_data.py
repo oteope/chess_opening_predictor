@@ -25,8 +25,8 @@ import chess
 import chess.pgn
 from typing import List, Optional, Tuple
 
-# Default path for the Lichess Openings database (dist directory)
-DEFAULT_DIST_DIR = os.path.join(os.path.dirname(__file__), 'dist')
+# Default path for the Lichess Openings database (eco directory)
+DEFAULT_DIST_DIR = os.path.join(os.path.dirname(__file__), 'eco')
 
 # Global variable for opening detector (initialized in main)
 _OPENING_DETECTOR = None
