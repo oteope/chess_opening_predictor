@@ -312,10 +312,6 @@ def process_pgn(input_path, output_path, source_name, max_games=None):
                 skipped += 1
                 continue
 
-            # Get opening name and ECO code
-            opening_name = game.headers.get('Opening', '')
-            eco_code = game.headers.get('ECO', '')
-
             # --- Obtain the move list ---
             # Extract the sequence of moves from the mainline game
             board = game.board()
@@ -338,6 +334,9 @@ def process_pgn(input_path, output_path, source_name, max_games=None):
             if not valid:
                 skipped += 1
                 continue
+
+            # --- Opening detection from the board position ---
+            opening_name, eco_code = _infer_opening_and_eco(board, eco_db)
 
             # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
