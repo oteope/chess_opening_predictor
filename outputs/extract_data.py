@@ -111,23 +111,26 @@ def extract_one_hot(board):
     return features
 
 
-def _infer_opening_and_eco(board: chess.Board,
-                           eco_db: 'eco.Eco') -> tuple:
+def _infer_opening_and_eco(game, eco_db):
     """
-    Returns (opening_name, eco_code) using the ECO database.
-    If the database is not available or the position is not recognized,
-    falls back to ("Unknown", "Unknown").
+    Infer opening name and ECO from the full game.
     """
     if not _ECO_AVAILABLE or eco_db is None:
         return "Unknown", "Unknown"
+
     try:
-        eco_code, opening_name = eco_db.eco_of_game(board)
-        # ensure strings
-        if opening_name is None:
-            opening_name = "Unknown"
-        if eco_code is None:
-            eco_code = "Unknown"
-        return opening_name, eco_code
+        result = eco_db.eco_of_game(game)
+
+        if result is None:
+            return "Unknown", "Unknown"
+
+        eco_code, opening_name = result
+
+        return (
+            opening_name or "Unknown",
+            eco_code or "Unknown"
+        )
+
     except Exception:
         return "Unknown", "Unknown"
 
@@ -336,7 +339,7 @@ def process_pgn(input_path, output_path, source_name, max_games=None):
                 continue
 
             # --- Opening detection from the board position ---
-            opening_name, eco_code = _infer_opening_and_eco(board, eco_db)
+            opening_name, eco_code = _infer_opening_and_eco(game, eco_db)
 
             # --- Extraction of one-hot features ---
             one_hot = extract_one_hot(board)
