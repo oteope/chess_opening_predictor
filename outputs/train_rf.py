@@ -32,10 +32,11 @@ def main():
     # --------------------------------------------------
 
     model = RandomForestClassifier(
-        n_estimators=100,
+        n_estimators=300,
         random_state=42,
         n_jobs=-1,
-        max_depth = 20,
+        max_depth = None,
+        max_features = 250
     )
 
     # --------------------------------------------------
