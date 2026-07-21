@@ -4,28 +4,46 @@
 """
 preprocessing.py
 
-Loads the final dataset and prepares it for Machine Learning.
+Common preprocessing pipeline for all Machine Learning models.
 
-Returns:
-    X_train
-    X_test
-    y_train
-    y_test
+Returns
+-------
+X_train
+X_test
+y_train
+y_test
 """
 
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
 def load_dataset(
     dataset_path,
     test_size=0.2,
-    random_state=42
+    random_state=42,
+    scale=False
 ):
     """
-    Loads the dataset and prepares it for training.
+    Loads and preprocesses the dataset.
+
+    Parameters
+    ----------
+    dataset_path : str
+        Path to the processed dataset.
+
+    test_size : float
+        Percentage used for testing.
+
+    random_state : int
+        Random seed.
+
+    scale : bool
+        Whether to apply StandardScaler.
+        False -> Random Forest
+        True  -> Neural Networks
     """
 
     # --------------------------------------------------
@@ -47,7 +65,7 @@ def load_dataset(
     df["Source"] = source_encoder.fit_transform(df["Source"])
 
     # --------------------------------------------------
-    # Features and target
+    # Features / Target
     # --------------------------------------------------
 
     X = df.drop(columns=["Result"])
@@ -65,5 +83,19 @@ def load_dataset(
         random_state=random_state,
         stratify=y
     )
+
+    # --------------------------------------------------
+    # Optional scaling
+    # --------------------------------------------------
+
+    if scale:
+
+        scaler = StandardScaler()
+
+        X_train = scaler.fit_transform(X_train)
+
+        X_test = scaler.transform(X_test)
+
+        return X_train, X_test, y_train, y_test, scaler
 
     return X_train, X_test, y_train, y_test

@@ -7,7 +7,7 @@ train_rf.py
 Train a Random Forest classifier for the Chess Opening Predictor.
 """
 
-from preprocessing import load_dataset
+from outputs.models.common.preprocessing import load_dataset
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
