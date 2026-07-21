@@ -37,14 +37,8 @@ def main():
     # Compute class weights
     # --------------------------------------------------
 
-    weights = compute_class_weight(
-        class_weight="balanced",
-        classes=np.unique(y_train.values),
-        y=y_train.values
-)
-
     weights = torch.tensor(
-        weights,
+        [2.0, 1.0, 1.0],
         dtype=torch.float32
         )
 
@@ -151,7 +145,7 @@ def main():
 )
     torch.save(
     model.state_dict(),
-    "outputs/models/mlp/experiments/model_v2.pth"
-)
+    "outputs/models/mlp/experiments/model_v3.pth"
+)   
 if __name__ == "__main__":
     main()
