@@ -101,7 +101,8 @@ def main():
 
     optimizer = Adam(
         model.parameters(),
-        lr=0.001
+        lr=0.001,
+        weight_decay=1e-4
     )
 
     # --------------------------------------------------
@@ -145,7 +146,7 @@ def main():
 )
     torch.save(
     model.state_dict(),
-    "outputs/models/mlp/experiments/model_v4.pth"
+    "outputs/models/mlp/experiments/model_v5.pth"
 )   
 if __name__ == "__main__":
     main()
