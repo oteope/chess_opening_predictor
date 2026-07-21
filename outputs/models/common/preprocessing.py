@@ -63,6 +63,14 @@ def load_dataset(
     df["Opening_Name"] = opening_encoder.fit_transform(df["Opening_Name"])
     df["ECO_Code"] = eco_encoder.fit_transform(df["ECO_Code"])
     df["Source"] = source_encoder.fit_transform(df["Source"])
+    
+    opening_encoder = LabelEncoder()
+    eco_encoder = LabelEncoder()
+    source_encoder = LabelEncoder()
+
+    df["Opening_Name"] = opening_encoder.fit_transform(df["Opening_Name"])
+    df["ECO_Code"] = eco_encoder.fit_transform(df["ECO_Code"])
+    df["Source"] = source_encoder.fit_transform(df["Source"])
 
     # --------------------------------------------------
     # Features / Target

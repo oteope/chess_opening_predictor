@@ -10,7 +10,7 @@ class ChessMLP(nn.Module):
 
         self.network = nn.Sequential(
 
-            nn.Linear(771, 512),
+            nn.Linear(774, 512),
             nn.ReLU(),
             nn.Dropout(0.3),
 

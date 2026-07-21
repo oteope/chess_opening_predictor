@@ -17,10 +17,11 @@ from torch.utils.data import (
 )
 
 from torch.optim import Adam
-
+import os
 from outputs.models.common.preprocessing import load_dataset
 from outputs.models.mlp.model import ChessMLP
-
+from sklearn.utils.class_weight import compute_class_weight
+import numpy as np
 
 def main():
 
@@ -31,6 +32,21 @@ def main():
     X_train, X_test, y_train, y_test = load_dataset(
         "data/processed/final_dataset.csv"
     )
+
+    # --------------------------------------------------
+    # Compute class weights
+    # --------------------------------------------------
+
+    weights = compute_class_weight(
+        class_weight="balanced",
+        classes=np.unique(y_train.values),
+        y=y_train.values
+)
+
+    weights = torch.tensor(
+        weights,
+        dtype=torch.float32
+        )
 
     # --------------------------------------------------
     # Convert DataFrames to PyTorch tensors
@@ -81,7 +97,9 @@ def main():
     # Loss Function
     # --------------------------------------------------
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(
+        weight=weights
+    )
 
     # --------------------------------------------------
     # Optimizer
@@ -95,35 +113,45 @@ def main():
     # --------------------------------------------------
     # Training Loop
     # --------------------------------------------------
-
-    epochs = 100
-
+    epochs = 50
+    
     for epoch in range(epochs):
 
         model.train()
 
+        epoch_loss = 0.0
+
         for batch_X, batch_y in train_loader:
 
-            # Forward Pass
             outputs = model(batch_X)
 
-            # Compute Loss
             loss = criterion(outputs, batch_y)
 
-            # Reset Previous Gradients
             optimizer.zero_grad()
 
-            # Backpropagation
             loss.backward()
 
-            # Update Weights
             optimizer.step()
 
+            epoch_loss += loss.item()
+
+        epoch_loss /= len(train_loader)
+
         print(
-            f"Epoch [{epoch+1}/{epochs}] "
-            f"Loss: {loss.item():.4f}"
+        f"Epoch {epoch+1:03d}/{epochs} | Loss: {epoch_loss:.4f}"
         )
 
 
+# --------------------------------------------------
+# Save Model
+# --------------------------------------------------
+    os.makedirs(
+    "outputs/models/mlp/experiments",
+    exist_ok=True
+)
+    torch.save(
+    model.state_dict(),
+    "outputs/models/mlp/experiments/model_v2.pth"
+)
 if __name__ == "__main__":
     main()
