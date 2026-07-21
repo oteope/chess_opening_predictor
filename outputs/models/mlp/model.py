@@ -10,17 +10,19 @@ class ChessMLP(nn.Module):
 
         self.network = nn.Sequential(
 
-            nn.Linear(774, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
+        nn.Linear(774, 512),
+        nn.BatchNorm1d(512),
+        nn.ReLU(),
+        nn.Dropout(0.3),
 
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Dropout(0.3),
+        nn.Linear(512, 256),
+        nn.BatchNorm1d(256),
+        nn.ReLU(),
+        nn.Dropout(0.3),
 
-            nn.Linear(256, 3)
+        nn.Linear(256, 3)
 
-        )
+    )
 
     def forward(self, x):
 
