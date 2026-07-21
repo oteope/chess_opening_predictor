@@ -102,7 +102,7 @@ def main():
 
     model.load_state_dict(
         torch.load(
-            "outputs/models/mlp/experiments/model_v3.pth",
+            "outputs/models/mlp/experiments/model_v4.pth",
             weights_only=True
         )
     )

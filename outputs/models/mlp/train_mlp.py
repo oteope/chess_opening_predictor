@@ -38,9 +38,9 @@ def main():
     # --------------------------------------------------
 
     weights = torch.tensor(
-        [2.0, 1.0, 1.0],
+        [4.0, 1.0, 1.0],
         dtype=torch.float32
-        )
+    )
 
     # --------------------------------------------------
     # Convert DataFrames to PyTorch tensors
@@ -145,7 +145,7 @@ def main():
 )
     torch.save(
     model.state_dict(),
-    "outputs/models/mlp/experiments/model_v3.pth"
+    "outputs/models/mlp/experiments/model_v4.pth"
 )   
 if __name__ == "__main__":
     main()
