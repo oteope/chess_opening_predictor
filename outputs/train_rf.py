@@ -36,7 +36,8 @@ def main():
         random_state=42,
         n_jobs=-1,
         max_depth = None,
-        max_features = 250
+        max_features = 250,
+        class_weight="balanced"
     )
 
     # --------------------------------------------------
