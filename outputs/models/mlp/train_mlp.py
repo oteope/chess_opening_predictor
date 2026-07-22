@@ -153,7 +153,7 @@ def main():
 )
     torch.save(
     model.state_dict(),
-    "outputs/models/mlp/experiments/model_v7.pth"
+    "outputs/models/mlp/experiments/model_v9.pth"
 )   
 if __name__ == "__main__":
     main()
