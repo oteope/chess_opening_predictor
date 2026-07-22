@@ -15,7 +15,7 @@ from sklearn.metrics import (
     classification_report,
     confusion_matrix,
 )
-
+import joblib
 
 def main():
 
@@ -69,6 +69,11 @@ def main():
 
     print("\nConfusion Matrix\n")
     print(confusion_matrix(y_test, predictions))
+
+    joblib.dump(
+        model,
+        "outputs/models/random_forest/best_model/final_model.pkl"
+)
 
 
 if __name__ == "__main__":
