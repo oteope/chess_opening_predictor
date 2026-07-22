@@ -14,3 +14,6 @@ data/processed/final_dataset.csv
 
 #Visual Studio Code
 .vscode/
+
+#Training
+random_forest_v4.pkl
