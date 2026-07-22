@@ -14,3 +14,4 @@ data/processed/final_dataset.csv
 
 #Visual Studio Code
 .vscode/
+final_model.pkl
