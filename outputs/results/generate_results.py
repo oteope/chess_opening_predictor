@@ -53,7 +53,7 @@ from models.common.preprocessing import load_dataset
 # ---------------------------------------------------------------------------
 # Paths to trained models and processed dataset
 # ---------------------------------------------------------------------------
-DATASET_PATH = str(PROJECT_ROOT / "data" / "processed" / "processed_kaggle.csv")
+DATASET_PATH = str(PROJECT_ROOT / "data" / "processed" / "final_dataset.csv")
 RF_MODEL_PATH = str(PROJECT_ROOT / "outputs" / "models" / "random_forest" / "best_model" / "final_model.pkl")
 MLP_MODEL_PATH = str(PROJECT_ROOT / "outputs" / "models" / "mlp" / "best_model" / "model_v9.pth")
 RESULTS_DIR = SCRIPT_DIR
@@ -119,7 +119,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 state_dict = torch.load(MLP_MODEL_PATH, map_location=device)
 
 # Determine input_size from state_dict keys
-input_size = state_dict["net.0.weight"].shape[1]
+input_size = state_dict["network.0.weight"].shape[1]
 mlp_model = ChessMLP(input_size=input_size).to(device)
 mlp_model.load_state_dict(state_dict)
 mlp_model.eval()
