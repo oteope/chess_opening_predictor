@@ -4,7 +4,7 @@
 """
 evaluate.py
 
-Evaluate a trained Multi-Layer Perceptron.
+Common evaluation metrics for any classification model.
 """
 
 import torch
@@ -14,57 +14,73 @@ from sklearn.metrics import (
     classification_report,
     confusion_matrix,
 )
-
 from outputs.models.common.preprocessing import load_dataset
 from outputs.models.mlp.model import ChessMLP
+import torch
 
 
 def evaluate(model, X_test, y_test):
     """
-    Evaluate a trained model.
+    Evaluate a PyTorch or Scikit-Learn classifier.
     """
 
-    model.eval()
+    # -----------------------------
+    # PyTorch model
+    # -----------------------------
+    if isinstance(model, torch.nn.Module):
 
-    with torch.no_grad():
+        model.eval()
 
-        outputs = model(X_test)
+        with torch.no_grad():
 
-        predictions = torch.argmax(
-            outputs,
-            dim=1
-        )
+            outputs = model(X_test)
 
-    predictions = predictions.numpy()
-    y_test = y_test.numpy()
+            predictions = torch.argmax(
+                outputs,
+                dim=1
+            ).numpy()
 
+        y_true = y_test.numpy()
+
+    # -----------------------------
+    # Scikit-Learn model
+    # -----------------------------
+    else:
+
+        predictions = model.predict(X_test)
+        y_true = y_test
+
+    # -----------------------------
+    # Metrics
+    # -----------------------------
     accuracy = accuracy_score(
-        y_test,
+        y_true,
         predictions
     )
 
     print("=" * 60)
-    print("MLP Results")
+    print("Model Results")
     print("=" * 60)
 
     print(f"\nAccuracy: {accuracy:.4f}")
 
     print("\nClassification Report\n")
+
     print(
         classification_report(
-            y_test,
+            y_true,
             predictions
         )
     )
 
     print("\nConfusion Matrix\n")
+
     print(
         confusion_matrix(
-            y_test,
+            y_true,
             predictions
         )
     )
-
 
 def main():
 
