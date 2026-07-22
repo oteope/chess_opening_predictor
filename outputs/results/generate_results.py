@@ -316,29 +316,17 @@ report_lines.append("|------|----------|-----------|--------|-----|")
 report_lines.append(_fmt(mlp_metrics))
 report_lines.append("")
 report_lines.append("## Comparison\n")
-report_lines.append(
-    f"- Random Forest attained an accuracy of **{rf_metrics['Accuracy']:.4f}**, "
-    f"while the MLP reached **{mlp_metrics['Accuracy']:.4f}**."
-)
-report_lines.append(
-    f"- The difference in weighted F1‑score is "
-    f"{abs(rf_metrics['F1']-mlp_metrics['F1']):.4f}."
-)
+report_lines.append("| Model | Accuracy | Precision | Recall | F1 |")
+report_lines.append("|------|----------|-----------|--------|-----|")
+report_lines.append(_fmt(rf_metrics))
+report_lines.append(_fmt(mlp_metrics))
 report_lines.append("")
 report_lines.append("## Research Question\n")
 report_lines.append(
-    "The two models were trained exclusively on features derived from the "
-    "first ten moves (board geometry, ECO code, opening name, player Elo). "
-    "Both achieve accuracies substantially above the naive baseline of ~0.33 "
-    "(three equally likely outcomes). This indicates that **the opening already "
-    "contains predictive information about the final outcome**, although the "
-    "performance is far from perfect, suggesting that later game dynamics also "
-    "play a crucial role. "
-    "The MLP (which can learn non‑linear interactions) performs comparably to "
-    "the Random Forest, confirming that the structure of the opening is "
-    "informative irrespective of the model capacity. "
-    "Further research would be needed to disentangle the contribution of "
-    "player strength (Elo) versus pure board configuration."
+    "This project aims to investigate whether the opening phase of a chess game "
+    "contains predictive information about the final outcome. "
+    "The experimental results presented above will be analyzed and discussed "
+    "in the accompanying report."
 )
 report_lines.append("")
 
