@@ -16,6 +16,7 @@ from torch.utils.data import (
     DataLoader,
 )
 
+from torch.optim.lr_scheduler import StepLR
 from torch.optim import Adam
 import os
 from outputs.models.common.preprocessing import load_dataset
@@ -105,6 +106,12 @@ def main():
         weight_decay=1e-4
     )
 
+    scheduler = StepLR(
+        optimizer,
+        step_size=10,
+        gamma=0.5
+    )
+
     # --------------------------------------------------
     # Training Loop
     # --------------------------------------------------
@@ -135,7 +142,7 @@ def main():
         print(
         f"Epoch {epoch+1:03d}/{epochs} | Loss: {epoch_loss:.4f}"
         )
-
+        scheduler.step()
 
 # --------------------------------------------------
 # Save Model
@@ -146,7 +153,7 @@ def main():
 )
     torch.save(
     model.state_dict(),
-    "outputs/models/mlp/experiments/model_v6.pth"
+    "outputs/models/mlp/experiments/model_v7.pth"
 )   
 if __name__ == "__main__":
     main()
