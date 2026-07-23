@@ -31,9 +31,8 @@ def main():
     # --------------------------------------------------
 
     X_train, X_test, y_train, y_test = load_dataset(
-        "data/processed/final_dataset.csv"
+        "data/processed/final_dataset.csv",
     )
-
     # --------------------------------------------------
     # Compute class weights
     # --------------------------------------------------

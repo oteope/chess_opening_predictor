@@ -32,7 +32,6 @@ def evaluate(model, X_test, y_test):
         model.eval()
 
         with torch.no_grad():
-
             outputs = model(X_test)
 
             predictions = torch.argmax(
