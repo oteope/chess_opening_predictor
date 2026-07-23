@@ -78,9 +78,15 @@ X_train_rf, X_test_rf, y_train_rf, y_test_rf = load_dataset(
 
 print("[info] Loading dataset (MLP)")
 X_train_mlp, X_test_mlp, y_train_mlp, y_test_mlp, scaler = load_dataset(
-    DATASET_PATH, scale=True
+    DATASET_PATH, scale=False   
 )
 
+print("Shape:", X_test_mlp.shape)
+print("Mean:", X_test_mlp.mean())
+print("Std:", X_test_mlp.std())
+
+print("Primeras 10 features:")
+print(X_test_mlp[0][:10])
 feature_names = X_train_rf.columns.tolist()
 
 # ---------------------------------------------------------------------------
@@ -94,35 +100,23 @@ rf_model = joblib.load(RF_MODEL_PATH)
 # ---------------------------------------------------------------------------
 print("[info] Loading MLP model")
 
-# Attempt to import the model class; assume it exists in the project
-try:
-    from models.mlp.model import ChessMLP
-except ImportError:
-    # fallback: define a minimal wrapper (should not happen)
-    from torch import nn
-    class ChessMLP(nn.Module):
-        def __init__(self, input_size=774):
-            super().__init__()
-            self.net = nn.Sequential(
-                nn.Linear(input_size, 256),
-                nn.ReLU(),
-                nn.Dropout(0.3),
-                nn.Linear(256, 128),
-                nn.ReLU(),
-                nn.Dropout(0.3),
-                nn.Linear(128, 3),
-            )
-        def forward(self, x):
-            return self.net(x)
+from models.mlp.model import ChessMLP
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-state_dict = torch.load(MLP_MODEL_PATH, map_location=device)
 
-# Determine input_size from state_dict keys
-input_size = state_dict["network.0.weight"].shape[1]
-mlp_model = ChessMLP(input_size=input_size).to(device)
-mlp_model.load_state_dict(state_dict)
+mlp_model = ChessMLP().to(device)
+
+mlp_model.load_state_dict(
+    torch.load(
+        MLP_MODEL_PATH,
+        map_location=device,
+        weights_only=True
+    )
+)
+
 mlp_model.eval()
+
+print(mlp_model)
 
 # ---------------------------------------------------------------------------
 # 4. Helper to compute metrics from predictions
@@ -147,12 +141,37 @@ rf_metrics = compute_metrics(y_test_rf, y_pred_rf)
 print("    RF:", rf_metrics)
 
 print("[info] Evaluating MLP")
-X_test_mlp_tensor = torch.tensor(X_test_mlp, dtype=torch.float32).to(device)
+
+X_test_mlp_tensor = torch.tensor(
+    X_test_mlp.values,
+    dtype=torch.float32
+).to(device)
+
 with torch.no_grad():
+
     logits = mlp_model(X_test_mlp_tensor)
-    y_pred_mlp = torch.argmax(logits, dim=1).cpu().numpy()
+
+    print("\nPrimeros logits:")
+    print(logits[:5])
+
+    y_pred_mlp = torch.argmax(logits, dim=1)
+
+    print("\nPredicciones:")
+    print(torch.unique(y_pred_mlp, return_counts=True))
+
+    y_pred_mlp = y_pred_mlp.cpu().numpy()
+
 mlp_metrics = compute_metrics(y_test_mlp, y_pred_mlp)
 print("    MLP:", mlp_metrics)
+
+print("\n========== RANDOM FOREST ==========")
+print(classification_report(y_test_rf, y_pred_rf))
+
+print("\n========== MLP ==========")
+print(classification_report(y_test_mlp, y_pred_mlp))
+
+print("\nRF unique predictions:", np.unique(y_pred_rf))
+print("MLP unique predictions:", np.unique(y_pred_mlp))
 
 # ---------------------------------------------------------------------------
 # 6. Save comparison table
@@ -265,6 +284,15 @@ rf_rec = per_class_values(y_test_rf, y_pred_rf, "recall")
 mlp_rec = per_class_values(y_test_mlp, y_pred_mlp, "recall")
 rf_f1 = per_class_values(y_test_rf, y_pred_rf, "f1")
 mlp_f1 = per_class_values(y_test_mlp, y_pred_mlp, "f1")
+
+print("\nrf_f1:", rf_f1)
+print("mlp_f1:", mlp_f1)
+
+print("\nrf_prec:", rf_prec)
+print("mlp_prec:", mlp_prec)
+
+print("\nrf_rec:", rf_rec)
+print("mlp_rec:", mlp_rec)
 
 def plot_per_class(values_rf, values_mlp, class_labels, metric_name, save_path):
     x = np.arange(len(class_labels))
