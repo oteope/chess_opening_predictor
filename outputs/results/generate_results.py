@@ -77,16 +77,11 @@ X_train_rf, X_test_rf, y_train_rf, y_test_rf = load_dataset(
 )
 
 print("[info] Loading dataset (MLP)")
-X_train_mlp, X_test_mlp, y_train_mlp, y_test_mlp, scaler = load_dataset(
-    DATASET_PATH, scale=False   
+# Never unpack 5 return values when scale=False
+X_train_mlp, X_test_mlp, y_train_mlp, y_test_mlp = load_dataset(
+    DATASET_PATH, scale=False
 )
 
-print("Shape:", X_test_mlp.shape)
-print("Mean:", X_test_mlp.mean())
-print("Std:", X_test_mlp.std())
-
-print("Primeras 10 features:")
-print(X_test_mlp[0][:10])
 feature_names = X_train_rf.columns.tolist()
 
 # ---------------------------------------------------------------------------
@@ -115,8 +110,6 @@ mlp_model.load_state_dict(
 )
 
 mlp_model.eval()
-
-print(mlp_model)
 
 # ---------------------------------------------------------------------------
 # 4. Helper to compute metrics from predictions
@@ -148,17 +141,8 @@ X_test_mlp_tensor = torch.tensor(
 ).to(device)
 
 with torch.no_grad():
-
     logits = mlp_model(X_test_mlp_tensor)
-
-    print("\nPrimeros logits:")
-    print(logits[:5])
-
     y_pred_mlp = torch.argmax(logits, dim=1)
-
-    print("\nPredicciones:")
-    print(torch.unique(y_pred_mlp, return_counts=True))
-
     y_pred_mlp = y_pred_mlp.cpu().numpy()
 
 mlp_metrics = compute_metrics(y_test_mlp, y_pred_mlp)
