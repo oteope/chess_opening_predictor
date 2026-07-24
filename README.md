@@ -30,11 +30,13 @@ No chess heuristics, engine evaluations or handcrafted positional features are p
 
 The project benchmarks a classical Machine Learning approach (Random Forest) against a Deep Learning approach (Multi-Layer Perceptron implemented in PyTorch) under identical experimental conditions.
 
+The project was developed following a complete end-to-end Machine Learning workflow, from automated data collection to model evaluation and result generation.
+
 ## 🎯 Research Question
 
 This project aims to answer a simple but meaningful research question:
 
-> **How much predictive information about the final outcome of a chess game is already contained in the opening?**
+> **How accurately can Machine Learning predict the outcome of a chess game using only the opening position and player ratings?**
 
 More specifically, the project investigates:
 
@@ -82,7 +84,7 @@ Each source contributes different characteristics that improve the diversity and
 | Source | Description |
 |---------|-------------|
 | Kaggle Dataset | Public online chess games |
-| Professional Players | Magnus, Hikaru, Ding Liren and GothamChess |
+| Professional Chess.com Accounts| Magnus, Hikaru, Ding Liren and GothamChess |
 | Personal Games | Games played by a friend |
 
 ### 📚 Public Dataset
@@ -179,6 +181,7 @@ This guarantees that every source follows exactly the same feature representatio
 
 ## 📁 Dataset Organization
 
+```text
 data/
 ├── raw/
 │   ├── kaggle_dataset.csv
@@ -197,3 +200,143 @@ data/
 │       ├── ding_liren_processed.csv
 │       ├── gothamchess_processed.csv
 │       └── pro_players_processed.csv
+```
+
+# ♟️ Feature Representation
+
+Raw chess boards cannot be processed directly by traditional Machine Learning algorithms.
+
+Each board position after move 10 is therefore transformed into a fixed-length numerical representation that preserves the complete arrangement of the pieces while remaining suitable for both classical Machine Learning and Deep Learning models.
+
+The final feature vector combines board geometry with player strength information.
+
+The representation consists of:
+
+- **768 board features** obtained through One-Hot Encoding.
+- **White Elo**
+- **Black Elo**
+- **Elo Difference**
+
+This produces a total of **771 numerical input features** for every chess game.
+
+Unlike chess engines, no handcrafted positional heuristics or engine evaluations are included.
+
+The models receive only the raw board configuration together with the players' ratings, allowing them to learn meaningful patterns directly from historical data.
+
+| Feature | Description |
+|---------|-------------|
+| One-Hot Board Encoding | 768 binary features representing the board after move 10 |
+| White Elo | White player's rating |
+| Black Elo | Black player's rating |
+| Elo Difference | White Elo − Black Elo |
+
+<p align="center">
+    <img src="assets/images/feature_representation.png"
+         alt="Feature Representation"
+         width="100%">
+</p>
+
+# 🧠 Model Architecture
+
+Two fundamentally different Machine Learning approaches were selected for this project.
+
+The objective is not only to maximize predictive performance, but also to compare how a classical Machine Learning algorithm behaves against a Deep Learning model when both receive exactly the same input representation.
+
+Both models are trained on the identical dataset using the same train-test split and feature representation, ensuring a fair comparison.
+
+## 🌲 Random Forest
+
+The first model is a **Random Forest Classifier**, an ensemble learning algorithm that combines multiple decision trees to improve predictive performance and reduce overfitting.
+
+Random Forests are particularly well suited for structured tabular data because they can model highly non-linear relationships while requiring very little feature engineering.
+
+In this project, the model receives the complete feature vector composed of:
+
+- One-Hot encoded board representation
+- White Elo
+- Black Elo
+- Elo Difference
+
+The final prediction is obtained through majority voting across all decision trees in the ensemble.
+
+## 🧠 Multi-Layer Perceptron (MLP)
+
+The Deep Learning approach is implemented using a fully connected Multi-Layer Perceptron developed with PyTorch.
+
+Unlike Random Forests, neural networks learn hierarchical feature representations through multiple hidden layers.
+
+The network receives exactly the same input vector used by the Random Forest and attempts to learn complex interactions between board geometry and player strength directly from data.
+
+The architecture consists of four hidden layers followed by a three-neuron output layer corresponding to the three possible game outcomes:
+
+- White Win
+- Draw
+- Black Win
+
+Batch Normalization and ReLU activation functions are applied after every hidden layer to improve training stability and convergence.
+
+## ⚖️ Why Compare These Models?
+
+Random Forests and Multi-Layer Perceptrons represent two very different Machine Learning paradigms.
+
+Random Forests partition the feature space using ensembles of decision trees, whereas neural networks learn continuous representations through gradient-based optimization.
+
+Comparing both approaches under identical experimental conditions provides insight into whether the information contained in chess openings is better captured by ensemble methods or by representation learning.
+
+This comparison also highlights the strengths and limitations of classical Machine Learning versus Deep Learning for structured chess data.
+
+# 🤖 Model Development
+
+Two different machine learning approaches were investigated throughout this project:
+
+- **Random Forest**, representing a classical Machine Learning algorithm.
+- **Multi-Layer Perceptron (MLP)** implemented in PyTorch, representing a Deep Learning approach.
+
+Rather than evaluating a single configuration, both models were developed through an iterative experimentation process involving multiple architectures and hyperparameter combinations.
+
+The objective was not simply to maximize accuracy, but also to understand how different design decisions affected the prediction of the three possible game outcomes (White Win, Draw and Black Win).
+
+> **Note:** The Random Forest experiments were trained using a **771-feature representation**, while the final MLP experiments used a slightly extended **774-feature representation** after additional preprocessing. The results reported in this repository correspond to the final optimized pipeline for each model.
+
+<p align="center">
+    <img src="assets/images/rf_vs_mlp.png"
+         alt="Random Forest vs MLP Architecture"
+         width="100%">
+</p>
+
+
+## 🌳 Random Forest
+
+Five different Random Forest configurations were evaluated during development.
+
+The experiments explored:
+
+- Number of estimators
+- Maximum tree depth
+- Feature subsampling (`max_features`)
+- Class weighting for imbalanced classes
+
+The results showed that increasing the number of trees slightly improved predictive performance, while restricting tree depth generally reduced accuracy.
+
+Introducing class weighting significantly improved the detection of **Draws**, although this came at the expense of lower overall accuracy.
+
+The final Random Forest selected for comparison provides the best trade-off between predictive performance and class balance.
+
+## 🧠 Multi-Layer Perceptron (PyTorch)
+
+Nine different neural network configurations were evaluated throughout the project.
+
+The experimentation process explored several aspects of the architecture and optimization strategy, including:
+
+- Different network depths
+- Larger hidden layers
+- Manual and automatic class weighting
+- Batch Normalization
+- Learning-rate scheduling
+- Regularization with Dropout
+
+Early experiments completely ignored the minority **Draw** class due to the dataset imbalance.
+
+Subsequent experiments improved draw recognition by introducing Batch Normalization and alternative loss weighting strategies, although these improvements generally reduced the overall classification accuracy.
+
+Increasing network capacity and optimization complexity produced only marginal gains, suggesting that the primary limitation lies in the information contained within the input representation rather than in the model architecture itself.
